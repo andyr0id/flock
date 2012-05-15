@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Flock - common Twitter followers</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="bootstrap/css/bootstrap-responsive.min.css" />
+        <style type="text/css">
+            body {
+                padding: 20px 0;
+            }
+            input[type=text] {
+                margin-right: 5px;
+            }
+            #results h3,
+            .profile {
+                margin-bottom: 15px;
+            }
+        </style>
+        <script type="text/javascript" src="http://code.jquery.com/jquery-1.7.2.min.js"></script>
+        <script type="text/javascript">
+            $(function(){
+                
+                $('#add_btn').click(function(){
+                    var input = $('#twits').find('input[type=text]').first(),
+                        new_input = input.clone().val(''),
+                        container = input.parent();
+                    container.append(new_input);
+                });
+                
+                function array_chunk (input, size)
+                {
+                    var x, p = '', i = 0, c = -1, l = input.length || 0, n = [];
+
+                    if (size < 1)
+                        return null;
+
+                    if (Object.prototype.toString.call(input) === '[object Array]')
+                    {
+                        while (i < l)
+                        {
+                            (x = i % size) ? n[c][x] = input[i] : n[++c] = [input[i]];
+                            i++;
+                        }
+                    }
+                    else
+                    {
+                        for (p in input)
+                        {
+                            if (input.hasOwnProperty(p))
+                            {
+                                (x = i % size) ? n[c][p] = input[p] : n[++c] = {}, n[c][p] = input[p];
+                                i++;
+                            }
+                        }
+                    }
+                    return n;
+                }
+                
+                function filter_exclusive(result)
+                {
+                    var filtered = false;
+                    $.each(result.pool, function(user, user_ids){
+                        if (filtered === false)
+                        {
+                            filtered = user_ids;
+                            return;
+                        }
+                        
+                        var ids_to_remove = [];
+                        $.each(filtered, function(i, id){
+                            var index = $.inArray(id, user_ids);
+                            if (index == -1)
+                                ids_to_remove.push(id);
+                        });
+                    
+                        if (ids_to_remove.length)
+                        {
+                            $.each(ids_to_remove, function(i, id){
+                                var index = $.inArray(id, filtered);
+                                filtered.splice($.inArray(id, filtered), 1);
+                            });
+                        }
+                    });
+                    return filtered;
+                }
+                
+                function filter_rev_exclusive(result)
+                {
+                    var filtered = false;
+                    $.each(result.pool, function(user, user_ids){
+                        if (filtered === false)
+                        {
+                            filtered = user_ids;
+                            return;
+                        }
+                        
+                        var ids_to_remove = [];
+                        $.each(filtered, function(i, id){
+                            var index = $.inArray(id, user_ids);
+                            if (index > -1)
+                                ids_to_remove.push(id);
+                        });
+                    
+                        if (ids_to_remove.length)
+                        {
+                            $.each(ids_to_remove, function(i, id){
+                                var index = $.inArray(id, filtered);
+                                filtered.splice($.inArray(id, filtered), 1);
+                            });
+                        }
+                    });
+                    return filtered;
+                }
+                
+                function filter_inclusive(result)
+                {
+                    var filtered = [];
+                    $.each(result.pool, function(user, ids){
+                        $.each(ids, function(i, id){
+                            if ($.inArray(id, filtered) < 0)
+                                filtered.push(id);
+                        });
+                    });
+                    return filtered;
+                }
+                
+                function render_users(users)
+                {
+                    var template = $('<div class="span1 profile"><a><img /></a></div>'),
+                        end_point = 'http://api.twitter.com/1/users/lookup.json',
+                        user_chunks = array_chunk(users, 100),
+                        container = $('#results');
+                        
+                    container.empty();
+                    container.append('<h3>You have '+users.length+' '+(users.length == 1 ? 'person' : 'people')+' in your flock</h3>');
+                    
+                    $.each(user_chunks, function(i, user_chunk){
+                        $.ajax({
+                            url: end_point,
+                            data: {
+                                user_id: user_chunk.join(',')
+                            },
+                            method: 'post',
+                            dataType: 'jsonp',
+                            success: function(result)
+                            {
+                                if (result && result.length)
+                                {
+                                    $.each(result, function(i, user){
+                                        var render = template.clone();
+                                        $('img', render).attr('src', user.profile_image_url);
+                                        $('a', render).attr({
+                                            href: 'http://twitter.com/#!'+user.screen_name,
+                                            target: '_blank'
+                                        });
+                                        container.append(render);
+                                    });
+                                }
+                            }
+                        });
+                    });
+                }
+                
+                function render_nothing()
+                {
+                    $('#results').html('<h2>No Results</h2>');
+                }
+                
+                function flock_complete(result)
+                {
+                    var mode = $('#mode input:checked').val(),
+                        users = [];
+                    
+                    switch (mode)
+                    {
+                        case 'exclusive':
+                            users = filter_exclusive(result);
+                            break;
+                            
+                        case 'rev_exclusive':
+                            users = filter_rev_exclusive(result);
+                            break;
+                    
+                        default:
+                            users = filter_inclusive(result);
+                            break;
+                    }
+                    
+                    if (users.length)
+                        render_users(users);
+                    else
+                        render_nothing();
+                }
+                
+                $('#submit_btn').click(function(){
+                    var users = [],
+                        inputs = $('#twits').find('input[type=text]');
+                    inputs.each(function(){
+                        var input = $(this),
+                            user = input.val();
+                        if (user && $.inArray(user, users) < 0) users.push(user);
+                    });
+                    
+                    if (users.length > 1)
+                    {
+                        var pool = {},
+                            followers_end_point = 'https://api.twitter.com/1/followers/ids.json?cursor=-1&screen_name=',
+                            responses = 0,
+                            num_users = users.length;
+                        $.each(users, function(i, user){
+                            if (user.charAt(0) == '@')
+                                user = user.substr(1, user.length-1);
+                            
+                            var end_point = followers_end_point+user;
+                            $.ajax({
+                                url: end_point,
+                                success: function(result){
+                                    responses++;
+                                    if (result)
+                                        pool[user] = result.ids;
+                                    else
+                                         pool[user] = [];
+                                    
+                                    if (responses == num_users)
+                                    {
+                                        var result = {
+                                            num_users: num_users,
+                                            pool: pool
+                                        };
+                                        flock_complete(result);
+                                    }
+                                },
+                                dataType: 'jsonp'
+                            });
+                        });
+                    }
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <div class="container-fluid">
+            <div class="row-fluid">
+                <div class="hero-unit">
+                    <h1>Flock</h1>
+                    <p>is a service that let's you find your common followers on Twitter</p>
+                </div>
+            </div>
+            <div class="row-fluid">
+                <div class="well">
+                    <div class="row-fluid">
+                        <div class="span4">
+                            <h2>Step 1</h2>
+                            <p>Enter Twitter users:</p>
+                            <form id="twits" action="#">
+                                <div class="row-fluid"><input type="text" class="input-small" placeholder="@"><input type="text" class="input-small" placeholder="@"></div>
+                                <input id="add_btn" class="btn btn-primary" type="button" value="+">
+                            </form>
+                        </div>
+                        <div class="span4">
+                            <h2>Step 2</h2>
+                            <p>Select a mode:</p>
+                            <form id="mode" action="#">
+                                <label class="radio">
+                                    <input type="radio" name="mode" value="inclusive"/>
+                                    Inclusive - all followers
+                                </label>
+                                <label class="radio">
+                                    <input type="radio" name="mode" value="exclusive" checked="checked"/>
+                                    Exclusive - common followers
+                                </label>
+                                <label class="radio">
+                                    <input type="radio" name="mode" value="rev_exclusive"/>
+                                    Reverse Exclusive - followers who only follow one of you
+                                </label>
+                            </form>
+                        </div>
+                        <div class="span4">
+                            <h2>Step 3</h2>
+                            <form id="submit" action="#">
+                                <input id="submit_btn" class="btn btn-primary" type="button" value="Show Flock">
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="results" class="row-fluid"></div>
+        </div>
+    </body>
+</html>
