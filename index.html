@@ -78,7 +78,7 @@
                         {
                             $.each(ids_to_remove, function(i, id){
                                 var index = $.inArray(id, filtered);
-                                filtered.splice($.inArray(id, filtered), 1);
+                                filtered.splice(index, 1);
                             });
                         }
                     });
@@ -106,7 +106,7 @@
                         {
                             $.each(ids_to_remove, function(i, id){
                                 var index = $.inArray(id, filtered);
-                                filtered.splice($.inArray(id, filtered), 1);
+                                filtered.splice(index, 1);
                             });
                         }
                     });
