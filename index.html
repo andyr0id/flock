@@ -192,10 +192,49 @@
                     else
                         render_nothing();
                 }
+
+                function get_all_followers(user, complete)
+                {
+                    var ids = [],
+                        max_pages = 50,
+                        current_page = 0,
+                        next_request = function(cursor)
+                        {
+                            var end_point = 'https://api.twitter.com/1/followers/ids.json?cursor='+cursor+'&screen_name='+user;
+                            $.ajax({
+                                url: end_point,
+                                success: function(result){
+                                    if (result)
+                                    {
+                                        $.each(result.ids, function(i, id){
+                                            ids.push(id);
+                                        });
+                                    
+                                        if (result.next_cursor && current_page < max_pages)
+                                        {
+                                            setTimeout(function(){
+                                                current_page++;
+                                                next_request(result.next_cursor_str);
+                                            }, 250);
+                                            return;
+                                        }
+                                    }
+
+                                    complete(ids);
+                                },
+                                dataType: 'jsonp'
+                            });
+                        };
+
+                    next_request("-1");
+                }
                 
                 $('#submit_btn').click(function(){
                     var users = [],
                         inputs = $('#twits').find('input[type=text]');
+
+                    $('#results').html('<h3>Loading...</h3>');
+                    
                     inputs.each(function(){
                         var input = $(this),
                             user = input.val();
@@ -205,34 +244,28 @@
                     if (users.length > 1)
                     {
                         var pool = {},
-                            followers_end_point = 'https://api.twitter.com/1/followers/ids.json?cursor=-1&screen_name=',
                             responses = 0,
                             num_users = users.length;
+
                         $.each(users, function(i, user){
                             if (user.charAt(0) == '@')
                                 user = user.substr(1, user.length-1);
                             
-                            var end_point = followers_end_point+user;
-                            $.ajax({
-                                url: end_point,
-                                success: function(result){
-                                    responses++;
-                                    if (result)
-                                        pool[user] = result.ids;
-                                    else
-                                         pool[user] = [];
+                            get_all_followers(user, function(ids){
+                                responses++;
+                                pool[user] = ids;
                                     
-                                    if (responses == num_users)
-                                    {
-                                        var result = {
-                                            num_users: num_users,
-                                            pool: pool
-                                        };
-                                        flock_complete(result);
-                                    }
-                                },
-                                dataType: 'jsonp'
+                                if (responses == num_users)
+                                {
+                                    var result = {
+                                        num_users: num_users,
+                                        pool: pool
+                                    };
+                                    flock_complete(result);
+                                }
+
                             });
+                            
                         });
                     }
                 });
