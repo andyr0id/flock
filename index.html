@@ -16,18 +16,23 @@
             .profile {
                 margin-bottom: 15px;
             }
+            .profile {
+                float: left;
+                width: 48px;
+                margin-left: 15px;
+            }
         </style>
         <script type="text/javascript" src="http://code.jquery.com/jquery-1.7.2.min.js"></script>
         <script type="text/javascript">
             $(function(){
-                
+
                 $('#add_btn').click(function(){
                     var input = $('#twits').find('input[type=text]').first(),
                         new_input = input.clone().val(''),
                         container = input.parent();
                     container.append(new_input);
                 });
-                
+
                 function array_chunk (input, size)
                 {
                     var x, p = '', i = 0, c = -1, l = input.length || 0, n = [];
@@ -56,7 +61,7 @@
                     }
                     return n;
                 }
-                
+
                 function filter_exclusive(result)
                 {
                     var filtered = false;
@@ -66,14 +71,14 @@
                             filtered = user_ids;
                             return;
                         }
-                        
+
                         var ids_to_remove = [];
                         $.each(filtered, function(i, id){
                             var index = $.inArray(id, user_ids);
                             if (index == -1)
                                 ids_to_remove.push(id);
                         });
-                    
+
                         if (ids_to_remove.length)
                         {
                             $.each(ids_to_remove, function(i, id){
@@ -84,7 +89,7 @@
                     });
                     return filtered;
                 }
-                
+
                 function filter_rev_exclusive(result)
                 {
                     var filtered = false;
@@ -94,14 +99,14 @@
                             filtered = user_ids;
                             return;
                         }
-                        
+
                         var ids_to_remove = [];
                         $.each(filtered, function(i, id){
                             var index = $.inArray(id, user_ids);
                             if (index > -1)
                                 ids_to_remove.push(id);
                         });
-                    
+
                         if (ids_to_remove.length)
                         {
                             $.each(ids_to_remove, function(i, id){
@@ -112,7 +117,7 @@
                     });
                     return filtered;
                 }
-                
+
                 function filter_inclusive(result)
                 {
                     var filtered = [];
@@ -124,17 +129,17 @@
                     });
                     return filtered;
                 }
-                
+
                 function render_users(users)
                 {
-                    var template = $('<div class="span1 profile"><a><img /></a></div>'),
+                    var template = $('<div class="profile"><a><img /></a></div>'),
                         end_point = 'http://api.twitter.com/1/users/lookup.json',
                         user_chunks = array_chunk(users, 100),
                         container = $('#results');
-                        
+
                     container.empty();
                     container.append('<h3>You have '+users.length+' '+(users.length == 1 ? 'person' : 'people')+' in your flock</h3>');
-                    
+
                     $.each(user_chunks, function(i, user_chunk){
                         $.ajax({
                             url: end_point,
@@ -161,38 +166,38 @@
                         });
                     });
                 }
-                
+
                 function render_nothing()
                 {
                     $('#results').html('<h2>No Results</h2>');
                 }
-                
+
                 function flock_complete(result)
                 {
                     var mode = $('#mode input:checked').val(),
                         users = [];
-                    
+
                     switch (mode)
                     {
                         case 'exclusive':
                             users = filter_exclusive(result);
                             break;
-                            
+
                         case 'rev_exclusive':
                             users = filter_rev_exclusive(result);
                             break;
-                    
+
                         default:
                             users = filter_inclusive(result);
                             break;
                     }
-                    
+
                     if (users.length)
                         render_users(users);
                     else
                         render_nothing();
                 }
-                
+
                 $('#submit_btn').click(function(){
                     var users = [],
                         inputs = $('#twits').find('input[type=text]');
@@ -201,7 +206,7 @@
                             user = input.val();
                         if (user && $.inArray(user, users) < 0) users.push(user);
                     });
-                    
+
                     if (users.length > 1)
                     {
                         var pool = {},
@@ -211,7 +216,7 @@
                         $.each(users, function(i, user){
                             if (user.charAt(0) == '@')
                                 user = user.substr(1, user.length-1);
-                            
+
                             var end_point = followers_end_point+user;
                             $.ajax({
                                 url: end_point,
@@ -221,7 +226,7 @@
                                         pool[user] = result.ids;
                                     else
                                          pool[user] = [];
-                                    
+
                                     if (responses == num_users)
                                     {
                                         var result = {
